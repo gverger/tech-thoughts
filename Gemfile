@@ -26,3 +26,5 @@ gem "neat"
 gem "builder", "~> 3.0"
 
 gem "nokogiri"
+
+gem "middleman-disqus"

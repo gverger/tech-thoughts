@@ -69,4 +69,15 @@ configure :build do
 
   # Minify Javascript on build
   activate :minify_javascript
+
+  activate :disqus do |disqus|
+    disqus.shortname = "tech-thoughts-guillaume"
+  end
+end
+
+# Disqus
+configure :development do
+  activate :disqus do |disqus|
+    disqus.shortname = "guillaume-testing-disqus"
+  end
 end

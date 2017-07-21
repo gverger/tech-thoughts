@@ -1,6 +1,9 @@
 @import "bourbon";
 @import "base/base";   /* Bitters needs to be imported before Neat */
-@import  "neat";
+@import "neat";
 
 @import "highlighting";
+@import "partials/layout";
+@import "partials/nav";
+@import "partials/footer";
 

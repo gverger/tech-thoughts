@@ -15,6 +15,8 @@ gem "middleman-livereload"
 
 gem 'redcarpet', '~> 3.3', '>= 3.3.3'
 
+gem "middleman-syntax"
+
 # For feed.xml.builder
 gem "builder", "~> 3.0"
 

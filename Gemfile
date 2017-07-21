@@ -12,13 +12,15 @@ source 'https://rubygems.org'
 gem "middleman", "~> 4.1"
 gem "middleman-blog"
 
-group :development do
-  gem "middleman-livereload"
-end
+gem "middleman-livereload"
 
 gem 'redcarpet', '~> 3.3', '>= 3.3.3'
 
 gem "middleman-syntax"
+
+gem "bitters"
+gem "bourbon"
+gem "neat"
 
 # For feed.xml.builder
 gem "builder", "~> 3.0"

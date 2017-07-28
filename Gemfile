@@ -28,3 +28,7 @@ gem "builder", "~> 3.0"
 gem "nokogiri"
 
 gem "middleman-disqus"
+
+gem "org-ruby"
+# gem "coderay"
+gem "pygments.rb"

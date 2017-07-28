@@ -11,11 +11,6 @@ ol {
 
     span {
       display: inline-block;
-
-      &:before {
-        content: '/';
-        margin: 0 .3em;
-      }
     }
   }
 }

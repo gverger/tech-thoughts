@@ -55,6 +55,8 @@ set :markdown_engine, :redcarpet
 set :markdown, :fenced_code_blocks => true, :smartypants => true
 
 activate :syntax
+
+set :org_engine, :org_ruby
 # Methods defined in the helpers block are available in templates
 # helpers do
 #   def some_helper

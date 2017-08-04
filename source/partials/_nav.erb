@@ -9,4 +9,9 @@
       </li>
     <% end %>
   </ul>
+  <% if current_article %>
+    <div class="right">
+      <%= current_article.date.strftime('%B %d, %Y') %>
+    </div>
+  <% end %>
 </nav>

@@ -1,0 +1,249 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv='X-UA-Compatible' content='IE=edge;chrome=1' />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Tech Thoughts - Use Ruby Tags with Vim</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href='http://fonts.googleapis.com/css?family=Oxygen:400,300,700' rel='stylesheet' type='text/css'>
+    <link href="/stylesheets/site.css" rel="stylesheet" />
+  </head>
+  <body>
+
+    <div id="main" role="main">
+      <nav>
+  <ul>
+    <li>
+      <a href="/" class="blog-title">Tech Thoughts</a>
+    </li>
+      <li>
+        <i>Use Ruby Tags with Vim</i>
+      </li>
+  </ul>
+    <div class="right">
+      July 20, 2017
+    </div>
+</nav>
+
+      <p>We have a Rails application which starts to be larger and larger. In order to navigate easily
+between the different files we have, I like to use <strong>tags</strong>. It allows for instance to jump
+directly to the definition of a class or a method living in another part of the codebase, whithout
+having to navigate to the correct file.</p>
+
+<p>In this document, I will explain how we can get these tags to be generated, and how it integrates
+in my current workflow.</p>
+
+<h1>What is a tagfile</h1>
+
+<p>Vim uses tagfiles to retrieve all tags it needs to navigate. Here is an example of what a tagfile
+looks like:</p>
+<pre class="highlight plaintext"><code>!_TAG_FILE_FORMAT   2   /extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED   1   /0=unsorted, 1=sorted, 2=foldcase/
+Assignment  ../lib/cbc_meal_assigner/models/assignment.rb   /^class Assignment$/;"  c
+AssignmentList  ../lib/cbc_meal_assigner/models/assignments_list.rb /^class AssignmentList$/;"  c
+CbcMealAssigner ../lib/cbc_meal_assigner.rb /^module CbcMealAssigner$/;"    m
+CbcMealAssigner ../lib/cbc_meal_assigner/version.rb /^module CbcMealAssigner$/;"    m
+Client  ../lib/cbc_meal_assigner/models/client.rb   /^class Client$/;"  c
+Collection  ../lib/cbc_meal_assigner/utils/collection.rb    /^module Collection$/;" m
+Conflict    ../lib/cbc_meal_assigner/models/conflict.rb /^class Conflict$/;"    c
+Order   ../lib/cbc_meal_assigner/models/order.rb    /^class Order$/;"   c
+PastAssignment  ../lib/cbc_meal_assigner/models/past_assignment.rb  /^class PastAssignment$/;"  c
+ProblemCreator  ../lib/cbc_meal_assigner/interactors/problem_creator.rb /^class ProblemCreator$/;"  c
+ProblemSolver   ../lib/cbc_meal_assigner/interactors/problem_solver.rb  /^class ProblemSolver$/;"   c
+Restaurant  ../lib/cbc_meal_assigner/models/restaurant.rb   /^class Restaurant$/;"  c
+Solution    ../lib/cbc_meal_assigner/models/solution.rb /^class Solution$/;"    c
+VERSION ../lib/cbc_meal_assigner/version.rb /^  VERSION = "0.1.0"$/;"   C   class:CbcMealAssigner
+</code></pre>
+
+<p>There is a tag per line, except the first 2 lines which are metadata. On a tag line, there is:</p>
+
+<ol>
+<li>The tag</li>
+<li>the file that defines it</li>
+<li>The line defining it. Not the number, the actual line</li>
+<li>the type of tag (for instance <code>c</code> for class)</li>
+<li>The scope within which it is defined</li>
+</ol>
+
+<p>These informations help Vim to know exactly if the word under the cursor is a tag, and where to
+precisely find it. With this file you can
+<a href="http://vim.wikia.com/wiki/Browsing_programs_with_tags">browse your codebase</a> more efficiently!</p>
+
+<h1>Generating tags</h1>
+
+<p>I use <a href="https://github.com/tmm1/ripper-tags">ripper-tags</a> (v0.3.4) as my ruby tags generator.</p>
+
+<ol>
+<li>It takes into account the modules like <code>MyModule::MyClass</code>, which is not something
+<a href="https://github.com/tmm1/ripper-tags">Exuberant Ctags</a> does.</li>
+<li>It is fast enough: for our 49000 lines codebase, it takes 5 seconds to create the tags file</li>
+</ol>
+
+<p>The command I use is</p>
+<pre class="highlight shell"><code>ripper-tags -f .git/tags -R --tag-relative
+</code></pre>
+
+<ul>
+<li><code>-f .git/tags</code> because I want to put it in the <code>.git</code> folder. If I put it directly at the root
+of the project, Spring goes crazy and consumes my CPU for a couple of minutes.</li>
+<li><code>-R</code> to make it look at files recursively</li>
+<li><code>--tag-relative</code> so that Vim can find the tags later on, they are stored with relative paths.</li>
+</ul>
+
+<h1>Use the tags in Vim</h1>
+
+<p>We need to tell Vim to look at the <code>tags</code> file in the <code>.git</code> folder. Just put this line in your
+<code>~/.vimrc</code>:</p>
+<pre class="highlight plaintext"><code>set tags=.git/tags,tags;
+</code></pre>
+
+<p>It will tell Vim to check in the <code>.git/tags</code> file first, then the <code>tags</code> file in the current
+directory, and then <code>tags</code> files up to the root directory.</p>
+
+<h1>Checking the changes in the codebase</h1>
+
+<p>The tags can get outdated when any of the <code>*.rb</code> files is added, removed, or updated. That is when
+we should rerun the tags generator. Of course we don&rsquo;t want to rerun it manually each time we make
+a change, so we will set up an automatic check.</p>
+
+<h2>File change events</h2>
+
+<p>We want to detect anytime a file changes in our codebase. One option would be to hook ripper-tags
+to a buffer save in vim, but it will not detect when we checkout another git branch. We need
+something outside of our editor to do that.</p>
+
+<p>Enter <a href="https://github.com/emcrisostomo/fswatch">fswatch</a>:</p>
+
+<ul>
+<li>  it receives notifications when the content of the specified directories change</li>
+<li>  it can respond to certain types of files</li>
+</ul>
+
+<p>To get notified when a ruby file is changed here, we can do:</p>
+<pre class="highlight shell"><code>fswatch -o -e <span class="s2">".*"</span> -i <span class="s2">"</span><span class="se">\.</span><span class="s2">rb$"</span> ./
+</code></pre>
+
+<ul>
+<li><code>-o</code> tries to group all events into one event: we will be notified only once if we do a
+<code>git checkout another-branch</code></li>
+<li><code>-e &quot;.*&quot;</code> excludes all files from being watched: we don&rsquo;t want to watch non-ruby files</li>
+<li><code>-i &quot;\.rb$&quot;</code> includes all ruby files</li>
+<li><code>./</code> checks the current directory</li>
+</ul>
+
+<h2>Run ripper-tags</h2>
+
+<p>Now we have an update event, we want to run ripper-tags to replace our old <code>.git/tags</code> file. The
+workflow is:</p>
+
+<ol>
+<li> Run <code>ripper-tags</code> to create a new tags file</li>
+<li> Replace the old tags file with the new one</li>
+</ol>
+
+<p>The reason behind not using <code>ripper-tags</code> to directly write the <code>.git/tags</code> file is that it creates
+the file at the beginning of its execution, and then write the tags at the end. This would let us
+with an empty tags file during 5 seconds every time we save a file in Vim.</p>
+<pre class="highlight shell"><code>run_ripper<span class="o">()</span> <span class="o">{</span>
+    <span class="nb">echo</span> <span class="sb">`</span>date<span class="sb">`</span>: creating tags
+    ripper-tags -f .git/tags.new -R --tag-relative
+    mv .git/tags.new .git/tags
+    <span class="nb">echo</span> <span class="sb">`</span>date<span class="sb">`</span>: <span class="k">done</span>
+<span class="o">}</span>
+</code></pre>
+
+<h2>Wire everything up</h2>
+
+<p>Now we will make sure <code>run_ripper</code> is called everytime <code>fswatch</code> receives an event:</p>
+<pre class="highlight shell"><code><span class="nb">export</span> -f run_ripper <span class="c"># We will run the function inside xargs</span>
+fswatch -0 -o -e <span class="s2">".*"</span> -i <span class="s2">"</span><span class="se">\.</span><span class="s2">rb</span><span class="se">\$</span><span class="s2">"</span> ./ | xargs -0 -n1 bash -c <span class="s1">'run_ripper'</span>
+</code></pre>
+
+<p>I usually put every script I want to be able to run from everywhere in my <code>~/bin/</code> folder, which is
+in my <code>PATH</code>. In this case, I put everything in <code>~/bin/refresh_tags</code> file, I just have to invoke:</p>
+<pre class="highlight plaintext"><code>$ refresh_tags
+Jeu 20 jul 2017 10:47:20 PDT: creating tags
+Jeu 20 jul 2017 10:47:28 PDT: done
+Jeu 20 jul 2017 11:07:55 PDT: creating tags
+Jeu 20 jul 2017 11:08:02 PDT: done
+Jeu 20 jul 2017 17:25:20 PDT: creating tags
+Jeu 20 jul 2017 17:25:28 PDT: done
+Jeu 20 jul 2017 17:25:28 PDT: creating tags
+Jeu 20 jul 2017 17:25:34 PDT: done
+Jeu 20 jul 2017 17:25:34 PDT: creating tags
+Jeu 20 jul 2017 17:25:40 PDT: done
+Jeu 20 jul 2017 17:25:40 PDT: creating tags
+Jeu 20 jul 2017 17:25:45 PDT: done
+Jeu 20 jul 2017 17:25:45 PDT: creating tags
+Jeu 20 jul 2017 17:25:50 PDT: done
+Jeu 20 jul 2017 17:25:50 PDT: creating tags
+Jeu 20 jul 2017 17:25:55 PDT: done
+</code></pre>
+
+<p>Don&rsquo;t forget to let it run while you are coding!</p>
+
+      <footer>
+  <ul class="large-column">
+    <li><h5 class="heading">Recent Articles</h5></li>
+    <li>
+      <ol>
+          <li>
+            <a href="/2018/08/01/intelligent-snippets-with-vim.html">Intelligent Snippets with Vim</a>
+            <span>Aug  1</span>
+          </li>
+          <li>
+            <a href="/2017/07/20/use-ruby-tags-with-vim.html">Use Ruby Tags with Vim</a>
+            <span>Jul 20</span>
+          </li>
+      </ol>
+    </li>
+  </ul>
+
+  <ul class="small-column">
+    <li><h5 class="heading">Tags</h5></li>
+    <li>
+      <ol>
+          <li><a href="/tags/vim.html">vim (2)</a></li>
+          <li><a href="/tags/tags.html">tags (1)</a></li>
+          <li><a href="/tags/ruby.html">ruby (1)</a></li>
+      </ol>
+    </li>
+  <ul>
+</footer>
+
+<p class="large-column">
+    <div id='disqus_thread'></div>
+<script type='text/javascript'>
+//<![CDATA[
+                  var disqus_shortname = 'tech-thoughts-guillaume';
+          
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+//]]>
+</script>
+<noscript>Please enable JavaScript to view the <a href='http://disqus.com/?ref_noscript'>comments powered by Disqus.</a></noscript>
+<a href='http://disqus.com' class='dsq-brlink'>comments powered by <span class='logo-disqus'>Disqus</span></a>
+
+    <script type="text/javascript">
+//<![CDATA[
+    var disqus_shortname = 'tech-thoughts-guillaume';
+    (function () {
+        var s = document.createElement('script'); s.async = true;
+        s.type = 'text/javascript';
+        s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+        (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+    }());
+//]]>
+</script>
+
+</p>
+
+    </div>
+  </body>
+</html>

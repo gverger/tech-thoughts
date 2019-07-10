@@ -1,0 +1,315 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv='X-UA-Compatible' content='IE=edge;chrome=1' />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Tech Thoughts - Intelligent Snippets with Vim</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href='http://fonts.googleapis.com/css?family=Oxygen:400,300,700' rel='stylesheet' type='text/css'>
+    <link href="/stylesheets/site.css" rel="stylesheet" />
+  </head>
+  <body>
+
+    <div id="main" role="main">
+      <nav>
+  <ul>
+    <li>
+      <a href="/" class="blog-title">Tech Thoughts</a>
+    </li>
+      <li>
+        <i>Intelligent Snippets with Vim</i>
+      </li>
+  </ul>
+    <div class="right">
+      August 01, 2018
+    </div>
+</nav>
+
+      <p>I am not a big fan of commenting my code. I really am not. So when we took the decision to comment
+our app source code with YARD, I was not very happy. In my opinion, a comment is about to be
+outdated and misleading soon.</p>
+
+<p>Code doesn&rsquo;t lie. If you understand the code, you don&rsquo;t need these comments.
+But when you provide other people your library/app/piece of code, it is considered nice to provide
+some documentation. That will help them use your code without having to browse the source code.</p>
+
+<p>Fair enough, so let&rsquo;s document the public part of the code then.</p>
+
+<p>We are building a ruby library that will be used by others at some point. We want to provide a web
+interface to the library so that any user can check what methods they can use, and how to use them.</p>
+
+<p>We decided to use <a href="https://yardoc.org/">YARD</a> mainly because of how easy it is to generate web
+pages directly from the comments.</p>
+
+<p>With YARD, you will comment classes, modules and methods. In this post I will focus on commenting
+methods, because there are some stuff you can extract automatically from the method&rsquo;s signature to
+put it in your comment.</p>
+
+<p>And because I am lazy, I prefer to build a solution that does my job semi-automatically, even if it
+takes me a long time to build it. Eventually this time will be paid of, and that will be a win: fun
+during the creation of the tool, and ease of use.</p>
+
+<h1>YARD, the format</h1>
+
+<p>Before we dive into technical details, let me present you the format I will be focusing on today.
+Here is the beast:</p>
+<pre class="highlight ruby"><code><span class="c1"># Write a blog post and author it with your name</span>
+<span class="c1"># @param title [String] The post's title</span>
+<span class="c1"># @param author [String] Who is writing it</span>
+<span class="c1"># @return [String] A shiny blog post</span>
+<span class="k">def</span> <span class="nf">write_a_blog_post</span><span class="p">(</span><span class="n">title</span> <span class="o">=</span> <span class="s1">'Intelligent snippets with Vim'</span><span class="p">,</span> <span class="ss">author: </span><span class="s1">'Guillaume'</span><span class="p">)</span>
+  <span class="c1"># Sorry the implementation will remain a secret of mine</span>
+<span class="k">end</span>
+</code></pre>
+
+<p>Here you can see the nice comments on top of the method <code>write_a_blog_post</code>. We can specify a
+description, then the parameters the method takes, and the return value.</p>
+
+<p>Here is how is the page generated:</p>
+
+<p><img src="/images/2018-08-01/yard-page-example.png" alt="Created documentation page" /></p>
+
+<h1>My development setup</h1>
+
+<p>As you could deduce from the title, I will be using Vim to write these comments.
+I have been pairing Vim with <a href="https://github.com/SirVer/ultisnips">Ultisnips</a> for a while, creating
+simple custom snippets when I was lacking some functionality.</p>
+
+<p>What I want to have is an easy way to create a part of my method&rsquo;s documentation in a couple of
+keystrokes. Did I tell you I was lazy?</p>
+
+<p>Let&rsquo;s start with the end: how will this work?</p>
+
+<p><img src="/images/2018-08-01/ultisnips-use.gif" alt="Using the snippet" /></p>
+
+<p>Type <code>ym</code> before a method definition and voilà! Now jump between the tabstops and fill out the
+info.</p>
+
+<h1>But&hellip; How?</h1>
+
+<p>The only tricky part here is to find the method&rsquo;s parameters. That what we want to be automatically
+filled up. This allows us not to misspell variable names.
+We will need Ultisnips, and we will define our own snippet. We will use Python to navigate the file
+and find the parameters.</p>
+
+<p>Let&rsquo;s start with a custom snippet:
+From Vim <code>:UltisnipsEdit</code> brings you to a custom snippet file (invoke this command from a ruby file)
+Bear with me, this will be pretty ugly.</p>
+<pre class="highlight plaintext"><code>snippet "(\s*)ym\s*(.*)" "YARD method" br
+`!p snip.rv = f"{match.group(1)};{match.group(2)}"`
+endsnippet
+</code></pre>
+
+<p>This snippet alone doesn&rsquo;t do much. It will replace in place</p>
+<pre class="highlight plaintext"><code>  ym method_name
+</code></pre>
+
+<p>with</p>
+<pre class="highlight plaintext"><code>  ;method_name
+</code></pre>
+
+<p>On the left side of <code>;</code>, we will have the number of spaces before <code>ym</code>. We will use this spaces to
+indent the comments correctly.
+On the right side, we have the method name. We will use it to parse the buffer and find the method.</p>
+
+<p>The rest will be done by a python script. The idea is to find the first method corresponding to the
+provided name (or the first method, if no name is given), parse the parameters, and format our YARD
+comment.</p>
+
+<p>We will use a trick from ultisnips: <code>post_jump</code>. This directive will run a python script after we
+first jump to our snippet. We will then replace our line with the comments with placeholders. We
+are basically generating a dynamic snippet body.</p>
+
+<p>We want our dynamic snippet to look like:</p>
+<pre class="highlight plaintext"><code>snippet dumb
+# ${0:description}
+# @param title [${1:Type}]$2
+# @param author [${3:Type}]$4
+# @return [${5:TYPE}] ${6:value returned}
+endsnippet
+</code></pre>
+
+<p>With such a snippet, we could navigate between tabstops ($1, $2, $3&hellip;) to fill out our
+documentation.</p>
+
+<p>Let&rsquo;s navigate the vim buffer in search for our definition line.</p>
+<pre class="highlight python"><code><span class="k">def</span> <span class="nf">params</span><span class="p">(</span><span class="n">snip</span><span class="p">,</span> <span class="n">method_name</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">snip</span><span class="o">.</span><span class="nb">buffer</span><span class="o">.</span><span class="n">cursor</span><span class="o">.</span><span class="n">line</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">snip</span><span class="o">.</span><span class="nb">buffer</span><span class="p">)):</span>
+    <span class="n">line</span> <span class="o">=</span> <span class="n">snip</span><span class="o">.</span><span class="nb">buffer</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s">"def "</span> <span class="o">+</span> <span class="n">method_name</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">params_for_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">None</span>
+</code></pre>
+
+<p>This is some Python. I don&rsquo;t do Python much. The idea is to start from the line where we are in Vim
+and check below if a method corresponds to our needs. If no method_name is given, we&rsquo;ll take the
+first method, whatever its name.</p>
+
+<p>Once found we call <code>params_for_line</code>:</p>
+<pre class="highlight python"><code><span class="k">def</span> <span class="nf">params_for_line</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">re</span>
+    <span class="n">arguments</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">"def .*</span><span class="err">\</span><span class="s">((.*)</span><span class="err">\</span><span class="s">)"</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">arguments</span><span class="p">:</span>
+        <span class="n">lst</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">','</span><span class="p">)</span>
+        <span class="n">lst</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">'[:=]'</span><span class="p">,</span> <span class="n">s</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="n">lst</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">lst</span>
+    <span class="k">return</span> <span class="p">[]</span>
+</code></pre>
+
+<p>This one takes a line, and takes all parameters from it. It will return the list of parameters, and
+discard default values.</p>
+
+<p>Our journey is almost finished. Now let&rsquo;s <code>post_jump</code>!</p>
+<pre class="highlight plaintext"><code>post_jump "yard_method_with_params(snip)"
+</code></pre>
+
+<p>This line has to go just above the first snippet. It will invoke a yet-to-be-written python
+function which has the lovely name of <code>yard_method_with_params</code>:</p>
+<pre class="highlight python"><code><span class="k">def</span> <span class="nf">yard_method_with_params</span><span class="p">(</span><span class="n">snip</span><span class="p">):</span>
+    <span class="n">spaces</span><span class="p">,</span> <span class="n">method</span> <span class="o">=</span> <span class="n">snip</span><span class="o">.</span><span class="nb">buffer</span><span class="p">[</span><span class="n">snip</span><span class="o">.</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">';'</span><span class="p">)</span>
+    <span class="n">snip</span><span class="o">.</span><span class="nb">buffer</span><span class="p">[</span><span class="n">snip</span><span class="o">.</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="s">''</span>
+    <span class="n">param_list</span> <span class="o">=</span> <span class="n">params</span><span class="p">(</span><span class="n">snip</span><span class="p">,</span> <span class="n">method</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">param_list</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">snip</span><span class="o">.</span><span class="n">expand_anon</span><span class="p">(</span><span class="n">spaces</span> <span class="o">+</span> <span class="s">'ym '</span> <span class="o">+</span> <span class="n">method</span> <span class="o">+</span> <span class="s">' # NO SUCH METHOD'</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">body</span> <span class="o">=</span> <span class="n">f</span><span class="s">'{spaces}# ${{0:{method} description}}'</span>
+    <span class="n">body</span> <span class="o">+=</span> <span class="s">''</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">f</span><span class="s">"</span><span class="se">\n</span><span class="s">{spaces}# @param {p.strip()} [${{{str(2*i+1)}:Type}}] ${2*i+2}"</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">param_list</span><span class="p">)])</span>
+    <span class="n">body</span> <span class="o">+=</span> <span class="n">f</span><span class="s">'</span><span class="se">\n</span><span class="s">{spaces}# @return [${{{str(len(param_list) * 2 + 1)}:TYPE}}] ${{{str(len(param_list) * 2 + 2)}:value returned}}'</span>
+
+    <span class="n">snip</span><span class="o">.</span><span class="n">expand_anon</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+</code></pre>
+
+<ul>
+<li>The first 3 lines get the indentation level, and the parameters. It also wipe out the current
+line.</li>
+<li>Next 3 lines are a guard when we cannot find the method. We will just render the user&rsquo;s input
+with a comment at the end for some feedback</li>
+<li>Next 3 lines build the YARD documentation, with tabstops.</li>
+<li>Last line tells Ultisnips to replace the current snippet with the <code>body</code> string we just created.</li>
+</ul>
+
+<p>Here we are! There are some cases where this snippet won&rsquo;t work:
+- When the definition spans over several lines
+- When another method between the cursor and the method we want starts with the same name
+- Probably some other cases?</p>
+
+<p>But this covers all my needs for now.</p>
+
+<h1>The end?</h1>
+
+<p>This is the end for these snippets, but being able to create such beauty opens my snippet world to
+a myriad of possibilities. We can probably reuse the <code>params</code> method in a lot of different
+scenarios.</p>
+
+<p>So, this is more the beginning of an even smarter Vim. I love this editor.</p>
+
+<p>And I am now happy inserting YARD comments in my code, it feels very nice to see this magic
+happening!</p>
+
+<h1>Full code</h1>
+<pre class="highlight python"><code><span class="k">global</span> <span class="err">!</span><span class="n">p</span>
+<span class="k">def</span> <span class="nf">params_for_line</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">re</span>
+    <span class="n">arguments</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">"def .*</span><span class="err">\</span><span class="s">((.*)</span><span class="err">\</span><span class="s">)"</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">arguments</span><span class="p">:</span>
+        <span class="n">lst</span> <span class="o">=</span> <span class="n">arguments</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">','</span><span class="p">)</span>
+        <span class="n">lst</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">'[:=]'</span><span class="p">,</span> <span class="n">s</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="n">lst</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">lst</span>
+    <span class="k">return</span> <span class="p">[]</span>
+
+<span class="k">def</span> <span class="nf">params</span><span class="p">(</span><span class="n">snip</span><span class="p">,</span> <span class="n">method_name</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">snip</span><span class="o">.</span><span class="nb">buffer</span><span class="o">.</span><span class="n">cursor</span><span class="o">.</span><span class="n">line</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">snip</span><span class="o">.</span><span class="nb">buffer</span><span class="p">)):</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">snip</span><span class="o">.</span><span class="nb">buffer</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s">"def "</span> <span class="o">+</span> <span class="n">method_name</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">params_for_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
+<span class="k">def</span> <span class="nf">yard_method_with_params</span><span class="p">(</span><span class="n">snip</span><span class="p">):</span>
+    <span class="n">spaces</span><span class="p">,</span> <span class="n">method</span> <span class="o">=</span> <span class="n">snip</span><span class="o">.</span><span class="nb">buffer</span><span class="p">[</span><span class="n">snip</span><span class="o">.</span><span class="n">line</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">';'</span><span class="p">)</span>
+    <span class="n">snip</span><span class="o">.</span><span class="nb">buffer</span><span class="p">[</span><span class="n">snip</span><span class="o">.</span><span class="n">line</span><span class="p">]</span> <span class="o">=</span> <span class="s">''</span>
+    <span class="n">param_list</span> <span class="o">=</span> <span class="n">params</span><span class="p">(</span><span class="n">snip</span><span class="p">,</span> <span class="n">method</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">param_list</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">snip</span><span class="o">.</span><span class="n">expand_anon</span><span class="p">(</span><span class="n">spaces</span> <span class="o">+</span> <span class="s">'ym '</span> <span class="o">+</span> <span class="n">method</span> <span class="o">+</span> <span class="s">' # NO SUCH METHOD'</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">body</span> <span class="o">=</span> <span class="n">f</span><span class="s">'{spaces}# ${{0:{method} description}}'</span>
+    <span class="n">body</span> <span class="o">+=</span> <span class="s">''</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">f</span><span class="s">"</span><span class="se">\n</span><span class="s">{spaces}# @param {p.strip()} [${{{str(2*i+1)}:Type}}] ${2*i+2}"</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">param_list</span><span class="p">)])</span>
+    <span class="n">body</span> <span class="o">+=</span> <span class="n">f</span><span class="s">'</span><span class="se">\n</span><span class="s">{spaces}# @return [${{{str(len(param_list) * 2 + 1)}:TYPE}}] ${{{str(len(param_list) * 2 + 2)}:value returned}}'</span>
+
+    <span class="n">snip</span><span class="o">.</span><span class="n">expand_anon</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+<span class="n">endglobal</span>
+
+<span class="n">post_jump</span> <span class="s">"yard_method_with_params(snip)"</span>
+<span class="n">snippet</span> <span class="s">"(</span><span class="err">\</span><span class="s">s*)ym</span><span class="err">\</span><span class="s">s*(.*)"</span> <span class="s">"YARD method"</span> <span class="n">br</span>
+<span class="sb">`!p snip.rv = f"{match.group(1)};{match.group(2)}"`</span>
+<span class="n">endsnippet</span>
+</code></pre>
+
+      <footer>
+  <ul class="large-column">
+    <li><h5 class="heading">Recent Articles</h5></li>
+    <li>
+      <ol>
+          <li>
+            <a href="/2018/08/01/intelligent-snippets-with-vim.html">Intelligent Snippets with Vim</a>
+            <span>Aug  1</span>
+          </li>
+          <li>
+            <a href="/2017/07/20/use-ruby-tags-with-vim.html">Use Ruby Tags with Vim</a>
+            <span>Jul 20</span>
+          </li>
+      </ol>
+    </li>
+  </ul>
+
+  <ul class="small-column">
+    <li><h5 class="heading">Tags</h5></li>
+    <li>
+      <ol>
+          <li><a href="/tags/vim.html">vim (2)</a></li>
+          <li><a href="/tags/tags.html">tags (1)</a></li>
+          <li><a href="/tags/ruby.html">ruby (1)</a></li>
+      </ol>
+    </li>
+  <ul>
+</footer>
+
+<p class="large-column">
+    <div id='disqus_thread'></div>
+<script type='text/javascript'>
+//<![CDATA[
+                  var disqus_shortname = 'tech-thoughts-guillaume';
+          
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+//]]>
+</script>
+<noscript>Please enable JavaScript to view the <a href='http://disqus.com/?ref_noscript'>comments powered by Disqus.</a></noscript>
+<a href='http://disqus.com' class='dsq-brlink'>comments powered by <span class='logo-disqus'>Disqus</span></a>
+
+    <script type="text/javascript">
+//<![CDATA[
+    var disqus_shortname = 'tech-thoughts-guillaume';
+    (function () {
+        var s = document.createElement('script'); s.async = true;
+        s.type = 'text/javascript';
+        s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+        (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+    }());
+//]]>
+</script>
+
+</p>
+
+    </div>
+  </body>
+</html>

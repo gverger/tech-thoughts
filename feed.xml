@@ -1,0 +1,412 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Blog Name</title>
+  <subtitle>Blog subtitle</subtitle>
+  <id>http://blog.url.com/</id>
+  <link href="http://blog.url.com/"/>
+  <link href="http://blog.url.com/feed.xml" rel="self"/>
+  <updated>2018-08-01T15:40:00+02:00</updated>
+  <author>
+    <name>Blog Author</name>
+  </author>
+  <entry>
+    <title>Intelligent Snippets with Vim</title>
+    <link rel="alternate" href="http://blog.url.com/2018/08/01/intelligent-snippets-with-vim.html"/>
+    <id>http://blog.url.com/2018/08/01/intelligent-snippets-with-vim.html</id>
+    <published>2018-08-01T15:40:00+02:00</published>
+    <updated>2018-08-01T17:58:49+02:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;I am not a big fan of commenting my code. I really am not. So when we took the decision to comment
+our app source code with YARD, I was not very happy. In my opinion, a comment is about to be
+outdated and misleading soon.&lt;/p&gt;
+
+&lt;p&gt;Code doesn&amp;rsquo;t lie. If you understand the code, you don&amp;rsquo;t need these comments.
+But when you provide other people your library/app/piece of code, it is considered nice to provide
+some documentation. That will help them use your code without having to browse the source code.&lt;/p&gt;
+
+&lt;p&gt;Fair enough, so let&amp;rsquo;s document the public part of the code then.&lt;/p&gt;
+
+&lt;p&gt;We are building a ruby library that will be used by others at some point. We want to provide a web
+interface to the library so that any user can check what methods they can use, and how to use them.&lt;/p&gt;
+
+&lt;p&gt;We decided to use &lt;a href="https://yardoc.org/"&gt;YARD&lt;/a&gt; mainly because of how easy it is to generate web
+pages directly from the comments.&lt;/p&gt;
+
+&lt;p&gt;With YARD, you will comment classes, modules and methods. In this post I will focus on commenting
+methods, because there are some stuff you can extract automatically from the method&amp;rsquo;s signature to
+put it in your comment.&lt;/p&gt;
+
+&lt;p&gt;And because I am lazy, I prefer to build a solution that does my job semi-automatically, even if it
+takes me a long time to build it. Eventually this time will be paid of, and that will be a win: fun
+during the creation of the tool, and ease of use.&lt;/p&gt;
+
+&lt;h1&gt;YARD, the format&lt;/h1&gt;
+
+&lt;p&gt;Before we dive into technical details, let me present you the format I will be focusing on today.
+Here is the beast:&lt;/p&gt;
+&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;span class="c1"&gt;# Write a blog post and author it with your name&lt;/span&gt;
+&lt;span class="c1"&gt;# @param title [String] The post's title&lt;/span&gt;
+&lt;span class="c1"&gt;# @param author [String] Who is writing it&lt;/span&gt;
+&lt;span class="c1"&gt;# @return [String] A shiny blog post&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;write_a_blog_post&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;title&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s1"&gt;'Intelligent snippets with Vim'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="ss"&gt;author: &lt;/span&gt;&lt;span class="s1"&gt;'Guillaume'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+  &lt;span class="c1"&gt;# Sorry the implementation will remain a secret of mine&lt;/span&gt;
+&lt;span class="k"&gt;end&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Here you can see the nice comments on top of the method &lt;code&gt;write_a_blog_post&lt;/code&gt;. We can specify a
+description, then the parameters the method takes, and the return value.&lt;/p&gt;
+
+&lt;p&gt;Here is how is the page generated:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src="/images/2018-08-01/yard-page-example.png" alt="Created documentation page" /&gt;&lt;/p&gt;
+
+&lt;h1&gt;My development setup&lt;/h1&gt;
+
+&lt;p&gt;As you could deduce from the title, I will be using Vim to write these comments.
+I have been pairing Vim with &lt;a href="https://github.com/SirVer/ultisnips"&gt;Ultisnips&lt;/a&gt; for a while, creating
+simple custom snippets when I was lacking some functionality.&lt;/p&gt;
+
+&lt;p&gt;What I want to have is an easy way to create a part of my method&amp;rsquo;s documentation in a couple of
+keystrokes. Did I tell you I was lazy?&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s start with the end: how will this work?&lt;/p&gt;
+
+&lt;p&gt;&lt;img src="/images/2018-08-01/ultisnips-use.gif" alt="Using the snippet" /&gt;&lt;/p&gt;
+
+&lt;p&gt;Type &lt;code&gt;ym&lt;/code&gt; before a method definition and voilà! Now jump between the tabstops and fill out the
+info.&lt;/p&gt;
+
+&lt;h1&gt;But&amp;hellip; How?&lt;/h1&gt;
+
+&lt;p&gt;The only tricky part here is to find the method&amp;rsquo;s parameters. That what we want to be automatically
+filled up. This allows us not to misspell variable names.
+We will need Ultisnips, and we will define our own snippet. We will use Python to navigate the file
+and find the parameters.&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s start with a custom snippet:
+From Vim &lt;code&gt;:UltisnipsEdit&lt;/code&gt; brings you to a custom snippet file (invoke this command from a ruby file)
+Bear with me, this will be pretty ugly.&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;snippet "(\s*)ym\s*(.*)" "YARD method" br
+`!p snip.rv = f"{match.group(1)};{match.group(2)}"`
+endsnippet
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This snippet alone doesn&amp;rsquo;t do much. It will replace in place&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;  ym method_name
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;with&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;  ;method_name
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;On the left side of &lt;code&gt;;&lt;/code&gt;, we will have the number of spaces before &lt;code&gt;ym&lt;/code&gt;. We will use this spaces to
+indent the comments correctly.
+On the right side, we have the method name. We will use it to parse the buffer and find the method.&lt;/p&gt;
+
+&lt;p&gt;The rest will be done by a python script. The idea is to find the first method corresponding to the
+provided name (or the first method, if no name is given), parse the parameters, and format our YARD
+comment.&lt;/p&gt;
+
+&lt;p&gt;We will use a trick from ultisnips: &lt;code&gt;post_jump&lt;/code&gt;. This directive will run a python script after we
+first jump to our snippet. We will then replace our line with the comments with placeholders. We
+are basically generating a dynamic snippet body.&lt;/p&gt;
+
+&lt;p&gt;We want our dynamic snippet to look like:&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;snippet dumb
+# ${0:description}
+# @param title [${1:Type}]$2
+# @param author [${3:Type}]$4
+# @return [${5:TYPE}] ${6:value returned}
+endsnippet
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;With such a snippet, we could navigate between tabstops ($1, $2, $3&amp;hellip;) to fill out our
+documentation.&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s navigate the vim buffer in search for our definition line.&lt;/p&gt;
+&lt;pre class="highlight python"&gt;&lt;code&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;params&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;method_name&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;idx&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="nb"&gt;buffer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;cursor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nb"&gt;len&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="nb"&gt;buffer&lt;/span&gt;&lt;span class="p"&gt;)):&lt;/span&gt;
+    &lt;span class="n"&gt;line&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="nb"&gt;buffer&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;idx&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="s"&gt;"def "&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;method_name&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;params_for_line&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This is some Python. I don&amp;rsquo;t do Python much. The idea is to start from the line where we are in Vim
+and check below if a method corresponds to our needs. If no method_name is given, we&amp;rsquo;ll take the
+first method, whatever its name.&lt;/p&gt;
+
+&lt;p&gt;Once found we call &lt;code&gt;params_for_line&lt;/code&gt;:&lt;/p&gt;
+&lt;pre class="highlight python"&gt;&lt;code&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;params_for_line&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;re&lt;/span&gt;
+    &lt;span class="n"&gt;arguments&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;re&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;search&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"def .*&lt;/span&gt;&lt;span class="err"&gt;\&lt;/span&gt;&lt;span class="s"&gt;((.*)&lt;/span&gt;&lt;span class="err"&gt;\&lt;/span&gt;&lt;span class="s"&gt;)"&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;arguments&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;lst&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;arguments&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;group&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;','&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;lst&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;list&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;map&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="k"&gt;lambda&lt;/span&gt; &lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;re&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;'[:=]'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="p"&gt;)[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;strip&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt; &lt;span class="n"&gt;lst&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;lst&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;[]&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This one takes a line, and takes all parameters from it. It will return the list of parameters, and
+discard default values.&lt;/p&gt;
+
+&lt;p&gt;Our journey is almost finished. Now let&amp;rsquo;s &lt;code&gt;post_jump&lt;/code&gt;!&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;post_jump "yard_method_with_params(snip)"
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This line has to go just above the first snippet. It will invoke a yet-to-be-written python
+function which has the lovely name of &lt;code&gt;yard_method_with_params&lt;/code&gt;:&lt;/p&gt;
+&lt;pre class="highlight python"&gt;&lt;code&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;yard_method_with_params&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;spaces&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;method&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="nb"&gt;buffer&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;';'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="nb"&gt;buffer&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;''&lt;/span&gt;
+    &lt;span class="n"&gt;param_list&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;params&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;method&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;param_list&lt;/span&gt; &lt;span class="ow"&gt;is&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;expand_anon&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;spaces&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="s"&gt;'ym '&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;method&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="s"&gt;' # NO SUCH METHOD'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt;
+
+    &lt;span class="n"&gt;body&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="s"&gt;'{spaces}# ${{0:{method} description}}'&lt;/span&gt;
+    &lt;span class="n"&gt;body&lt;/span&gt; &lt;span class="o"&gt;+=&lt;/span&gt; &lt;span class="s"&gt;''&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;join&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;&lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="s"&gt;"&lt;/span&gt;&lt;span class="se"&gt;\n&lt;/span&gt;&lt;span class="s"&gt;{spaces}# @param {p.strip()} [${{{str(2*i+1)}:Type}}] ${2*i+2}"&lt;/span&gt; &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;enumerate&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;param_list&lt;/span&gt;&lt;span class="p"&gt;)])&lt;/span&gt;
+    &lt;span class="n"&gt;body&lt;/span&gt; &lt;span class="o"&gt;+=&lt;/span&gt; &lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="s"&gt;'&lt;/span&gt;&lt;span class="se"&gt;\n&lt;/span&gt;&lt;span class="s"&gt;{spaces}# @return [${{{str(len(param_list) * 2 + 1)}:TYPE}}] ${{{str(len(param_list) * 2 + 2)}:value returned}}'&lt;/span&gt;
+
+    &lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;expand_anon&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;body&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;The first 3 lines get the indentation level, and the parameters. It also wipe out the current
+line.&lt;/li&gt;
+&lt;li&gt;Next 3 lines are a guard when we cannot find the method. We will just render the user&amp;rsquo;s input
+with a comment at the end for some feedback&lt;/li&gt;
+&lt;li&gt;Next 3 lines build the YARD documentation, with tabstops.&lt;/li&gt;
+&lt;li&gt;Last line tells Ultisnips to replace the current snippet with the &lt;code&gt;body&lt;/code&gt; string we just created.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Here we are! There are some cases where this snippet won&amp;rsquo;t work:
+- When the definition spans over several lines
+- When another method between the cursor and the method we want starts with the same name
+- Probably some other cases?&lt;/p&gt;
+
+&lt;p&gt;But this covers all my needs for now.&lt;/p&gt;
+
+&lt;h1&gt;The end?&lt;/h1&gt;
+
+&lt;p&gt;This is the end for these snippets, but being able to create such beauty opens my snippet world to
+a myriad of possibilities. We can probably reuse the &lt;code&gt;params&lt;/code&gt; method in a lot of different
+scenarios.&lt;/p&gt;
+
+&lt;p&gt;So, this is more the beginning of an even smarter Vim. I love this editor.&lt;/p&gt;
+
+&lt;p&gt;And I am now happy inserting YARD comments in my code, it feels very nice to see this magic
+happening!&lt;/p&gt;
+
+&lt;h1&gt;Full code&lt;/h1&gt;
+&lt;pre class="highlight python"&gt;&lt;code&gt;&lt;span class="k"&gt;global&lt;/span&gt; &lt;span class="err"&gt;!&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;params_for_line&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;re&lt;/span&gt;
+    &lt;span class="n"&gt;arguments&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;re&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;search&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"def .*&lt;/span&gt;&lt;span class="err"&gt;\&lt;/span&gt;&lt;span class="s"&gt;((.*)&lt;/span&gt;&lt;span class="err"&gt;\&lt;/span&gt;&lt;span class="s"&gt;)"&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;arguments&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;lst&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;arguments&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;group&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;','&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;lst&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;list&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;map&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="k"&gt;lambda&lt;/span&gt; &lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;re&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;'[:=]'&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="p"&gt;)[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;strip&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt; &lt;span class="n"&gt;lst&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;lst&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;[]&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;params&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;method_name&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;idx&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="nb"&gt;buffer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;cursor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nb"&gt;len&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="nb"&gt;buffer&lt;/span&gt;&lt;span class="p"&gt;)):&lt;/span&gt;
+        &lt;span class="n"&gt;line&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="nb"&gt;buffer&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;idx&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="s"&gt;"def "&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;method_name&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;params_for_line&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;yard_method_with_params&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;spaces&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;method&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="nb"&gt;buffer&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;';'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="nb"&gt;buffer&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;''&lt;/span&gt;
+    &lt;span class="n"&gt;param_list&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;params&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;method&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;param_list&lt;/span&gt; &lt;span class="ow"&gt;is&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;expand_anon&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;spaces&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="s"&gt;'ym '&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;method&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="s"&gt;' # NO SUCH METHOD'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt;
+
+    &lt;span class="n"&gt;body&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="s"&gt;'{spaces}# ${{0:{method} description}}'&lt;/span&gt;
+    &lt;span class="n"&gt;body&lt;/span&gt; &lt;span class="o"&gt;+=&lt;/span&gt; &lt;span class="s"&gt;''&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;join&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;&lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="s"&gt;"&lt;/span&gt;&lt;span class="se"&gt;\n&lt;/span&gt;&lt;span class="s"&gt;{spaces}# @param {p.strip()} [${{{str(2*i+1)}:Type}}] ${2*i+2}"&lt;/span&gt; &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;enumerate&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;param_list&lt;/span&gt;&lt;span class="p"&gt;)])&lt;/span&gt;
+    &lt;span class="n"&gt;body&lt;/span&gt; &lt;span class="o"&gt;+=&lt;/span&gt; &lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="s"&gt;'&lt;/span&gt;&lt;span class="se"&gt;\n&lt;/span&gt;&lt;span class="s"&gt;{spaces}# @return [${{{str(len(param_list) * 2 + 1)}:TYPE}}] ${{{str(len(param_list) * 2 + 2)}:value returned}}'&lt;/span&gt;
+
+    &lt;span class="n"&gt;snip&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;expand_anon&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;body&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;endglobal&lt;/span&gt;
+
+&lt;span class="n"&gt;post_jump&lt;/span&gt; &lt;span class="s"&gt;"yard_method_with_params(snip)"&lt;/span&gt;
+&lt;span class="n"&gt;snippet&lt;/span&gt; &lt;span class="s"&gt;"(&lt;/span&gt;&lt;span class="err"&gt;\&lt;/span&gt;&lt;span class="s"&gt;s*)ym&lt;/span&gt;&lt;span class="err"&gt;\&lt;/span&gt;&lt;span class="s"&gt;s*(.*)"&lt;/span&gt; &lt;span class="s"&gt;"YARD method"&lt;/span&gt; &lt;span class="n"&gt;br&lt;/span&gt;
+&lt;span class="sb"&gt;`!p snip.rv = f"{match.group(1)};{match.group(2)}"`&lt;/span&gt;
+&lt;span class="n"&gt;endsnippet&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+</content>
+  </entry>
+  <entry>
+    <title>Use Ruby Tags with Vim</title>
+    <link rel="alternate" href="http://blog.url.com/2017/07/20/use-ruby-tags-with-vim.html"/>
+    <id>http://blog.url.com/2017/07/20/use-ruby-tags-with-vim.html</id>
+    <published>2017-07-20T06:20:12+02:00</published>
+    <updated>2018-08-01T15:33:40+02:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;We have a Rails application which starts to be larger and larger. In order to navigate easily
+between the different files we have, I like to use &lt;strong&gt;tags&lt;/strong&gt;. It allows for instance to jump
+directly to the definition of a class or a method living in another part of the codebase, whithout
+having to navigate to the correct file.&lt;/p&gt;
+
+&lt;p&gt;In this document, I will explain how we can get these tags to be generated, and how it integrates
+in my current workflow.&lt;/p&gt;
+
+&lt;h1&gt;What is a tagfile&lt;/h1&gt;
+
+&lt;p&gt;Vim uses tagfiles to retrieve all tags it needs to navigate. Here is an example of what a tagfile
+looks like:&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;!_TAG_FILE_FORMAT   2   /extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED   1   /0=unsorted, 1=sorted, 2=foldcase/
+Assignment  ../lib/cbc_meal_assigner/models/assignment.rb   /^class Assignment$/;"  c
+AssignmentList  ../lib/cbc_meal_assigner/models/assignments_list.rb /^class AssignmentList$/;"  c
+CbcMealAssigner ../lib/cbc_meal_assigner.rb /^module CbcMealAssigner$/;"    m
+CbcMealAssigner ../lib/cbc_meal_assigner/version.rb /^module CbcMealAssigner$/;"    m
+Client  ../lib/cbc_meal_assigner/models/client.rb   /^class Client$/;"  c
+Collection  ../lib/cbc_meal_assigner/utils/collection.rb    /^module Collection$/;" m
+Conflict    ../lib/cbc_meal_assigner/models/conflict.rb /^class Conflict$/;"    c
+Order   ../lib/cbc_meal_assigner/models/order.rb    /^class Order$/;"   c
+PastAssignment  ../lib/cbc_meal_assigner/models/past_assignment.rb  /^class PastAssignment$/;"  c
+ProblemCreator  ../lib/cbc_meal_assigner/interactors/problem_creator.rb /^class ProblemCreator$/;"  c
+ProblemSolver   ../lib/cbc_meal_assigner/interactors/problem_solver.rb  /^class ProblemSolver$/;"   c
+Restaurant  ../lib/cbc_meal_assigner/models/restaurant.rb   /^class Restaurant$/;"  c
+Solution    ../lib/cbc_meal_assigner/models/solution.rb /^class Solution$/;"    c
+VERSION ../lib/cbc_meal_assigner/version.rb /^  VERSION = "0.1.0"$/;"   C   class:CbcMealAssigner
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;There is a tag per line, except the first 2 lines which are metadata. On a tag line, there is:&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;The tag&lt;/li&gt;
+&lt;li&gt;the file that defines it&lt;/li&gt;
+&lt;li&gt;The line defining it. Not the number, the actual line&lt;/li&gt;
+&lt;li&gt;the type of tag (for instance &lt;code&gt;c&lt;/code&gt; for class)&lt;/li&gt;
+&lt;li&gt;The scope within which it is defined&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;These informations help Vim to know exactly if the word under the cursor is a tag, and where to
+precisely find it. With this file you can
+&lt;a href="http://vim.wikia.com/wiki/Browsing_programs_with_tags"&gt;browse your codebase&lt;/a&gt; more efficiently!&lt;/p&gt;
+
+&lt;h1&gt;Generating tags&lt;/h1&gt;
+
+&lt;p&gt;I use &lt;a href="https://github.com/tmm1/ripper-tags"&gt;ripper-tags&lt;/a&gt; (v0.3.4) as my ruby tags generator.&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;It takes into account the modules like &lt;code&gt;MyModule::MyClass&lt;/code&gt;, which is not something
+&lt;a href="https://github.com/tmm1/ripper-tags"&gt;Exuberant Ctags&lt;/a&gt; does.&lt;/li&gt;
+&lt;li&gt;It is fast enough: for our 49000 lines codebase, it takes 5 seconds to create the tags file&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;The command I use is&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;ripper-tags -f .git/tags -R --tag-relative
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;-f .git/tags&lt;/code&gt; because I want to put it in the &lt;code&gt;.git&lt;/code&gt; folder. If I put it directly at the root
+of the project, Spring goes crazy and consumes my CPU for a couple of minutes.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;-R&lt;/code&gt; to make it look at files recursively&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;--tag-relative&lt;/code&gt; so that Vim can find the tags later on, they are stored with relative paths.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1&gt;Use the tags in Vim&lt;/h1&gt;
+
+&lt;p&gt;We need to tell Vim to look at the &lt;code&gt;tags&lt;/code&gt; file in the &lt;code&gt;.git&lt;/code&gt; folder. Just put this line in your
+&lt;code&gt;~/.vimrc&lt;/code&gt;:&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;set tags=.git/tags,tags;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;It will tell Vim to check in the &lt;code&gt;.git/tags&lt;/code&gt; file first, then the &lt;code&gt;tags&lt;/code&gt; file in the current
+directory, and then &lt;code&gt;tags&lt;/code&gt; files up to the root directory.&lt;/p&gt;
+
+&lt;h1&gt;Checking the changes in the codebase&lt;/h1&gt;
+
+&lt;p&gt;The tags can get outdated when any of the &lt;code&gt;*.rb&lt;/code&gt; files is added, removed, or updated. That is when
+we should rerun the tags generator. Of course we don&amp;rsquo;t want to rerun it manually each time we make
+a change, so we will set up an automatic check.&lt;/p&gt;
+
+&lt;h2&gt;File change events&lt;/h2&gt;
+
+&lt;p&gt;We want to detect anytime a file changes in our codebase. One option would be to hook ripper-tags
+to a buffer save in vim, but it will not detect when we checkout another git branch. We need
+something outside of our editor to do that.&lt;/p&gt;
+
+&lt;p&gt;Enter &lt;a href="https://github.com/emcrisostomo/fswatch"&gt;fswatch&lt;/a&gt;:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;  it receives notifications when the content of the specified directories change&lt;/li&gt;
+&lt;li&gt;  it can respond to certain types of files&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;To get notified when a ruby file is changed here, we can do:&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;fswatch -o -e &lt;span class="s2"&gt;".*"&lt;/span&gt; -i &lt;span class="s2"&gt;"&lt;/span&gt;&lt;span class="se"&gt;\.&lt;/span&gt;&lt;span class="s2"&gt;rb$"&lt;/span&gt; ./
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;-o&lt;/code&gt; tries to group all events into one event: we will be notified only once if we do a
+&lt;code&gt;git checkout another-branch&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;-e &amp;quot;.*&amp;quot;&lt;/code&gt; excludes all files from being watched: we don&amp;rsquo;t want to watch non-ruby files&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;-i &amp;quot;\.rb$&amp;quot;&lt;/code&gt; includes all ruby files&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;./&lt;/code&gt; checks the current directory&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2&gt;Run ripper-tags&lt;/h2&gt;
+
+&lt;p&gt;Now we have an update event, we want to run ripper-tags to replace our old &lt;code&gt;.git/tags&lt;/code&gt; file. The
+workflow is:&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt; Run &lt;code&gt;ripper-tags&lt;/code&gt; to create a new tags file&lt;/li&gt;
+&lt;li&gt; Replace the old tags file with the new one&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;The reason behind not using &lt;code&gt;ripper-tags&lt;/code&gt; to directly write the &lt;code&gt;.git/tags&lt;/code&gt; file is that it creates
+the file at the beginning of its execution, and then write the tags at the end. This would let us
+with an empty tags file during 5 seconds every time we save a file in Vim.&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;run_ripper&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+    &lt;span class="nb"&gt;echo&lt;/span&gt; &lt;span class="sb"&gt;`&lt;/span&gt;date&lt;span class="sb"&gt;`&lt;/span&gt;: creating tags
+    ripper-tags -f .git/tags.new -R --tag-relative
+    mv .git/tags.new .git/tags
+    &lt;span class="nb"&gt;echo&lt;/span&gt; &lt;span class="sb"&gt;`&lt;/span&gt;date&lt;span class="sb"&gt;`&lt;/span&gt;: &lt;span class="k"&gt;done&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;Wire everything up&lt;/h2&gt;
+
+&lt;p&gt;Now we will make sure &lt;code&gt;run_ripper&lt;/code&gt; is called everytime &lt;code&gt;fswatch&lt;/code&gt; receives an event:&lt;/p&gt;
+&lt;pre class="highlight shell"&gt;&lt;code&gt;&lt;span class="nb"&gt;export&lt;/span&gt; -f run_ripper &lt;span class="c"&gt;# We will run the function inside xargs&lt;/span&gt;
+fswatch -0 -o -e &lt;span class="s2"&gt;".*"&lt;/span&gt; -i &lt;span class="s2"&gt;"&lt;/span&gt;&lt;span class="se"&gt;\.&lt;/span&gt;&lt;span class="s2"&gt;rb&lt;/span&gt;&lt;span class="se"&gt;\$&lt;/span&gt;&lt;span class="s2"&gt;"&lt;/span&gt; ./ | xargs -0 -n1 bash -c &lt;span class="s1"&gt;'run_ripper'&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;I usually put every script I want to be able to run from everywhere in my &lt;code&gt;~/bin/&lt;/code&gt; folder, which is
+in my &lt;code&gt;PATH&lt;/code&gt;. In this case, I put everything in &lt;code&gt;~/bin/refresh_tags&lt;/code&gt; file, I just have to invoke:&lt;/p&gt;
+&lt;pre class="highlight plaintext"&gt;&lt;code&gt;$ refresh_tags
+Jeu 20 jul 2017 10:47:20 PDT: creating tags
+Jeu 20 jul 2017 10:47:28 PDT: done
+Jeu 20 jul 2017 11:07:55 PDT: creating tags
+Jeu 20 jul 2017 11:08:02 PDT: done
+Jeu 20 jul 2017 17:25:20 PDT: creating tags
+Jeu 20 jul 2017 17:25:28 PDT: done
+Jeu 20 jul 2017 17:25:28 PDT: creating tags
+Jeu 20 jul 2017 17:25:34 PDT: done
+Jeu 20 jul 2017 17:25:34 PDT: creating tags
+Jeu 20 jul 2017 17:25:40 PDT: done
+Jeu 20 jul 2017 17:25:40 PDT: creating tags
+Jeu 20 jul 2017 17:25:45 PDT: done
+Jeu 20 jul 2017 17:25:45 PDT: creating tags
+Jeu 20 jul 2017 17:25:50 PDT: done
+Jeu 20 jul 2017 17:25:50 PDT: creating tags
+Jeu 20 jul 2017 17:25:55 PDT: done
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Don&amp;rsquo;t forget to let it run while you are coding!&lt;/p&gt;
+</content>
+  </entry>
+</feed>

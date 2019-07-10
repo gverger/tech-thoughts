@@ -87,6 +87,8 @@ GEM
       uglifier (~> 3.0)
     middleman-disqus (1.2.0)
       middleman-core (~> 4.0)
+    middleman-gh-pages (0.4.1)
+      rake (> 0.9.3)
     middleman-livereload (3.4.6)
       em-websocket (~> 0.5.1)
       middleman-core (>= 3.3)
@@ -117,6 +119,7 @@ GEM
     rack (2.0.3)
     rack-livereload (0.3.16)
       rack
+    rake (12.3.2)
     rb-fsevent (0.10.2)
     rb-inotify (0.9.10)
       ffi (>= 0.5.0, < 2)
@@ -144,6 +147,7 @@ DEPENDENCIES
   middleman (~> 4.1)
   middleman-blog
   middleman-disqus
+  middleman-gh-pages
   middleman-livereload
   middleman-syntax
   neat
@@ -153,4 +157,4 @@ DEPENDENCIES
   redcarpet (~> 3.3, >= 3.3.3)
 
 BUNDLED WITH
-   1.15.3
+   1.16.3

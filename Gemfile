@@ -32,3 +32,6 @@ gem "middleman-disqus"
 gem "org-ruby"
 # gem "coderay"
 gem "pygments.rb"
+
+gem 'middleman-gh-pages'
+

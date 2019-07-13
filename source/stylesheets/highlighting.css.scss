@@ -205,5 +205,6 @@
   color: #bbbbbb;
 }
 .highlight {
+  @apply my-4 rounded-lg shadow-lg p-2 font-mono text-sm;
   background-color: #f8f8f8;
 }

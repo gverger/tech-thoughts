@@ -156,6 +156,7 @@ it with a brute-force approach will be enough probably. We will try this first.
 Here is how it can look like:
 
 We take each order one by one, and we try to assign it a slot.
+
 - If we can (i.e. there is a slot that has enough capacity to serve the order), we move on to the
   next order.
 - If there is no slot left, we backtrack to the last order, and assign another slot to that order
@@ -181,6 +182,7 @@ We will have 4 orders, monday and tuesday for Quantcast and MuleSoft, and 4 slot
 tuesday for BunMee and Dosa.
 
 For monday, our backtracking algorithm could search like this:
+
 ```
 Quantcast-Monday <-- BunMee  (BunMee-Monday still has 230-50=180 capacity)
 MuleSoft-Monday <-- ? Not enough capacity for the restaurants

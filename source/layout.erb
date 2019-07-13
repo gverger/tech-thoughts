@@ -8,15 +8,14 @@
     <title>Tech Thoughts<%= ' - ' + current_article.title unless current_article.nil? %></title>
     <%= feed_tag :atom, "#{blog.options.prefix.to_s}/feed.xml", title: "Atom Feed" %>
 
-    <link href='http://fonts.googleapis.com/css?family=Oxygen:400,300,700' rel='stylesheet' type='text/css'>
     <%= stylesheet_link_tag "site" %>
   </head>
   <body>
-
     <div id="main" role="main">
       <%= partial "partials/nav" %>
-      <%= yield %>
-      <%= partial "partials/footer" %>
+      <div class="container mx-auto px-4 my-4 leading-loose text-gray-700 markdown">
+        <%= yield %>
+      </div>
     </div>
   </body>
 </html>

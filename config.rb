@@ -64,6 +64,15 @@ set :org_engine, :org_ruby
 #   end
 # end
 
+activate :external_pipeline,
+  name: :webpack,
+  command: build? ?
+  "NODE_ENV=production npx webpack -p --config ./webpack.config.js --progress --color --display-error-details --bail" :
+  "NODE_ENV=development npx webpack -d --watch --config ./webpack.config.js --color --display-error-details",
+  source: '.tmp/dist',
+  latency: 1
+
+
 # Build-specific configuration
 configure :build do
   # Minify CSS on build

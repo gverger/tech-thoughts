@@ -1,16 +1,13 @@
-<nav>
-  <ul>
-    <li>
-      <%= link_to "Tech Thoughts", "index.html", :class => 'blog-title' %>
-    </li>
-    <% if current_article %>
-      <li>
-        <i><%= current_article.title %></i>
-      </li>
-    <% end %>
-  </ul>
+<nav class="flex items-center justify-between flex-wrap bg-teal-500 p-6">
+  <div class="flex items-center flex-shrink-0 text-white mr-6">
+    <%= link_to "Tech Thoughts", "index.html", :class => 'font-semibold text-2xl' %>
+  </div>
+
   <% if current_article %>
-    <div class="right">
+    <div class="flex items-center text-white text-2xl font-thin">
+      <%= current_article.title %>
+    </div>
+    <div class="flex text-white">
       <%= current_article.date.strftime('%B %d, %Y') %>
     </div>
   <% end %>

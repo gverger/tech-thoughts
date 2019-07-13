@@ -1,0 +1,16 @@
+.markdown {
+  h1 {
+    @apply text-4xl mt-2 text-black font-thin;
+  }
+
+  h2 {
+    @apply text-3xl mt-1 font-thin;
+  }
+
+  ul {
+    @apply list-disc list-inside;
+  }
+  ol {
+    @apply list-decimal list-inside;
+  }
+}

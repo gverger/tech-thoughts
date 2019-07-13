@@ -11,9 +11,20 @@ per_page: 10
 <% end %>
 
 <% page_articles.each_with_index do |article, i| %>
-  <h3><%= link_to article.title, article %></h3>
-  <h5><%= article.date.strftime('%b %e') %></h5>
-  <p><%= article.summary(300) %></p>
+  <div class="rounded overflow-hidden shadow-lg my-6 p-4">
+    <div class="px-6 flex justify-between">
+      <div class="flex font-bold text-xl mb-2"><%= link_to article.title, article %></div>
+      <h5 class="flex text-gray-600"><%= article.date.strftime('%B %d, %Y') %></h5>
+    </div>
+    <div class="px-6 text-gray-700 text-base">
+      <%= article.summary(300) %>
+    </div>
+    <div class="px-6 py-4">
+      <% article.tags.each do |tag| %>
+        <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2">#<%= tag %></span>
+      <% end %>
+    </div>
+  </div>
 <% end %>
 
 <% if paginate %>

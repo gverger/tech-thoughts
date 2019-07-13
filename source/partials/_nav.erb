@@ -1,13 +1,13 @@
-<nav class="flex items-center justify-between flex-wrap bg-teal-500 p-6">
-  <div class="flex items-center flex-shrink-0 text-white mr-6">
+<nav class="flex items-center justify-between flex-wrap bg-orange-200 p-6">
+  <div class="flex items-center flex-shrink-0 text-red-600 mr-6">
     <%= link_to "Tech Thoughts", "index.html", :class => 'font-semibold text-2xl' %>
   </div>
 
   <% if current_article %>
-    <div class="flex items-center text-white text-2xl font-thin">
+    <div class="flex items-center text-red-600 text-2xl font-thin">
       <%= current_article.title %>
     </div>
-    <div class="flex text-white">
+    <div class="flex text-red-400">
       <%= current_article.date.strftime('%B %d, %Y') %>
     </div>
   <% end %>

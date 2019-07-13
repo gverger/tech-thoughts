@@ -1,26 +1,21 @@
-// module.exports = {
-//   plugins: [
-//     require('tailwindcss'),
-//     require('autoprefixer')
-//   ]
-// }
 const inProduction = (process.env.NODE_ENV == 'production');
 
-class TailwindExtractor {
-  static extract(content) {
-    return content.match(/[A-z0-9-:\/]+/g) || []
-  }
-}
+// class TailwindExtractor {
+//   static extract(content) {
+//     return content.match(/[A-z0-9-:\/]+/g) || []
+//   }
+// }
 
 const DEV_PLUGINS = [
   require('postcss-import')(),
   require('tailwindcss')(),
-  require('autoprefixer')()
+  require('autoprefixer')(),
 ]
 const PROD_PLUGINS = [
   require('postcss-import')(),
   require('tailwindcss')(),
   require('autoprefixer')(),
+  // // Doesnt work, removes some styles
   // require('postcss-purgecss')({
   //   content: [
   //     __dirname + '/../source#<{(||)}>#*.html',

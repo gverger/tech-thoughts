@@ -8,27 +8,25 @@
     <title>Tech Thoughts - Intelligent Snippets with Vim</title>
     <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
 
-    <link href='http://fonts.googleapis.com/css?family=Oxygen:400,300,700' rel='stylesheet' type='text/css'>
     <link href="/stylesheets/site.css" rel="stylesheet" />
   </head>
   <body>
-
     <div id="main" role="main">
-      <nav>
-  <ul>
-    <li>
-      <a href="/" class="blog-title">Tech Thoughts</a>
-    </li>
-      <li>
-        <i>Intelligent Snippets with Vim</i>
-      </li>
-  </ul>
-    <div class="right">
+      <nav class="flex items-center justify-between flex-wrap bg-teal-500 p-6">
+  <div class="flex items-center flex-shrink-0 text-white mr-6">
+    <a href="/" class="font-semibold text-2xl">Tech Thoughts</a>
+  </div>
+
+    <div class="flex items-center text-white text-2xl font-thin">
+      Intelligent Snippets with Vim
+    </div>
+    <div class="flex text-white">
       August 01, 2018
     </div>
 </nav>
 
-      <p>I am not a big fan of commenting my code. I really am not. So when we took the decision to comment
+      <div class="container mx-auto px-4 my-4 leading-loose text-gray-700 markdown">
+        <p>I am not a big fan of commenting my code. I really am not. So when we took the decision to comment
 our app source code with YARD, I was not very happy. In my opinion, a comment is about to be
 outdated and misleading soon.</p>
 
@@ -251,65 +249,7 @@ happening!</p>
 <span class="n">endsnippet</span>
 </code></pre>
 
-      <footer>
-  <ul class="large-column">
-    <li><h5 class="heading">Recent Articles</h5></li>
-    <li>
-      <ol>
-          <li>
-            <a href="/2018/08/01/intelligent-snippets-with-vim.html">Intelligent Snippets with Vim</a>
-            <span>Aug  1</span>
-          </li>
-          <li>
-            <a href="/2017/07/20/use-ruby-tags-with-vim.html">Use Ruby Tags with Vim</a>
-            <span>Jul 20</span>
-          </li>
-      </ol>
-    </li>
-  </ul>
-
-  <ul class="small-column">
-    <li><h5 class="heading">Tags</h5></li>
-    <li>
-      <ol>
-          <li><a href="/tags/vim.html">vim (2)</a></li>
-          <li><a href="/tags/tags.html">tags (1)</a></li>
-          <li><a href="/tags/ruby.html">ruby (1)</a></li>
-      </ol>
-    </li>
-  <ul>
-</footer>
-
-<p class="large-column">
-    <div id='disqus_thread'></div>
-<script type='text/javascript'>
-//<![CDATA[
-                  var disqus_shortname = 'tech-thoughts-guillaume';
-          
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-//]]>
-</script>
-<noscript>Please enable JavaScript to view the <a href='http://disqus.com/?ref_noscript'>comments powered by Disqus.</a></noscript>
-<a href='http://disqus.com' class='dsq-brlink'>comments powered by <span class='logo-disqus'>Disqus</span></a>
-
-    <script type="text/javascript">
-//<![CDATA[
-    var disqus_shortname = 'tech-thoughts-guillaume';
-    (function () {
-        var s = document.createElement('script'); s.async = true;
-        s.type = 'text/javascript';
-        s.src = '//' + disqus_shortname + '.disqus.com/count.js';
-        (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
-    }());
-//]]>
-</script>
-
-</p>
-
+      </div>
     </div>
   </body>
 </html>

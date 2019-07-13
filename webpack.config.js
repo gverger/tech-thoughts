@@ -4,7 +4,10 @@ const plugins = require('./webpack/plugins.js');
 
 module.exports = {
   entry: {
-    site: ['./source/javascripts/site.js', './source/stylesheets/site.scss']
+    site: [
+      './source/javascripts/site.js',
+      './source/stylesheets/site.scss'
+    ]
   },
   module: {
     rules: [

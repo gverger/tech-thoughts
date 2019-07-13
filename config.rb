@@ -67,8 +67,8 @@ set :org_engine, :org_ruby
 activate :external_pipeline,
   name: :webpack,
   command: build? ?
-  "NODE_ENV=production npx webpack -p --config ./webpack.config.js --progress --color --display-error-details --bail" :
-  "NODE_ENV=development npx webpack -d --watch --config ./webpack.config.js --color --display-error-details",
+  "env NODE_ENV=production npx webpack -p --config ./webpack.config.js --progress --color --display-error-details --bail" :
+  "env NODE_ENV=development npx webpack -d --watch --config ./webpack.config.js --color --display-error-details",
   source: '.tmp/dist',
   latency: 1
 

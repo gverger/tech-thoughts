@@ -1,6 +1,7 @@
 ---
 pageable: true
 per_page: 12
+layout: default
 ---
 <h1>Articles tagged '<%= tagname %>'</h1>
 
@@ -24,7 +25,9 @@ per_page: 12
       </div>
       <div class="px-6 py-4">
         <% article.tags.each do |tag| %>
-          <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2">#<%= tag %></span>
+          <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2">
+            <%= link_to "##{tag}", tag_path(tag) %>
+          </span>
         <% end %>
       </div>
     </div>

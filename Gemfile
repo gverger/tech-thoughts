@@ -14,7 +14,7 @@ gem "middleman-blog"
 
 gem "middleman-livereload"
 
-gem 'redcarpet', '~> 3.3', '>= 3.3.3'
+gem 'redcarpet', '~> 3.5'
 
 gem "middleman-syntax"
 

@@ -116,7 +116,7 @@ GEM
     public_suffix (2.0.5)
     pygments.rb (1.1.2)
       multi_json (>= 1.0.0)
-    rack (2.2.3)
+    rack (2.2.6.2)
     rack-livereload (0.3.16)
       rack
     rake (13.0.1)
